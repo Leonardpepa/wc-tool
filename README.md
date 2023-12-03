@@ -1,0 +1,1 @@
+# wc linux tool clone in pure go
