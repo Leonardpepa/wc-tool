@@ -27,8 +27,6 @@ type fileResults struct {
 	numberOfCharacters uint64
 }
 
-const MaxNumberOfArguments = 5
-
 var ProgramName = filepath.Base(os.Args[0])
 
 func main() {
@@ -59,13 +57,6 @@ func main() {
 			continue
 		}
 
-		defer func(file *os.File) {
-			err := file.Close()
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-		}(file)
-
 		// recalculate only when file changes
 		if res.fileName != fileName {
 			reader = bufio.NewReader(file)
@@ -81,6 +72,14 @@ func main() {
 			storeTotalResults.numberOfBytes += res.numberOfBytes
 			storeTotalResults.numberOfCharacters += res.numberOfCharacters
 		}
+
+		func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+		}(file)
+
 	}
 
 	if total {
