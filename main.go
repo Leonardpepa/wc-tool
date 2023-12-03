@@ -1,22 +1,30 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
-	"unicode/utf8"
+	"unicode"
 )
 
-type FileInfo struct {
-	fileName           []string
-	fileBytes          []byte
+type programOptions struct {
+	fileNames          []string
 	numberOfBytes      bool
 	numberOfLines      bool
 	numberOfWords      bool
 	numberOfCharacters bool
+}
+
+type fileResults struct {
+	fileName           string
+	options            programOptions
+	numberOfBytes      uint64
+	numberOfLines      uint64
+	numberOfWords      uint64
+	numberOfCharacters uint64
 }
 
 const MaxNumberOfArguments = 5
@@ -27,71 +35,141 @@ func main() {
 
 	arguments := os.Args[1:]
 
-	fileInfo, err := parseArguments(arguments)
+	options, err := parseArguments(arguments)
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	for index, value := range fileInfo.fileName {
+	var storeTotalResults fileResults
+	total := len(options.fileNames) > 1
 
-		fileContentsBytes, err := readFile(value)
+	if total {
+		storeTotalResults = fileResults{options: options, fileName: "total"}
+	}
 
+	res := fileResults{options: options}
+
+	var reader *bufio.Reader
+
+	for _, fileName := range options.fileNames {
+		file, err := os.Open(fileName)
 		if err != nil {
 			log.Println(err.Error())
 			continue
 		}
 
-		fileInfo.fileBytes = fileContentsBytes
-		printResults(&fileInfo, index)
+		defer func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+		}(file)
+
+		// recalculate only when file changes
+		if res.fileName != fileName {
+			reader = bufio.NewReader(file)
+			res.fileName = fileName
+			calculate(reader, &res)
+		}
+
+		printResults(&res)
+
+		if total {
+			storeTotalResults.numberOfLines += res.numberOfLines
+			storeTotalResults.numberOfWords += res.numberOfWords
+			storeTotalResults.numberOfBytes += res.numberOfBytes
+			storeTotalResults.numberOfCharacters += res.numberOfCharacters
+		}
+	}
+
+	if total {
+		printResults(&storeTotalResults)
 	}
 }
 
-func printResults(fileInfo *FileInfo, i int) {
+func printResults(results *fileResults) {
 	output := " "
 
 	// -l
-	if fileInfo.numberOfLines {
-		lineCounter := getNumberOfLines(fileInfo.fileBytes)
-		output += fmt.Sprintf("%d  ", lineCounter)
+	if results.options.numberOfLines {
+		output += fmt.Sprintf("%v  ", results.numberOfLines)
 	}
 
 	// -w
-	if fileInfo.numberOfWords {
-		wordCount := getNumberOfWords(fileInfo.fileBytes)
-		output += fmt.Sprintf("%d  ", wordCount)
+	if results.options.numberOfWords {
+		output += fmt.Sprintf("%v  ", results.numberOfWords)
 	}
 
 	// -c
-	if fileInfo.numberOfBytes {
-		output += fmt.Sprintf("%d  ", len(fileInfo.fileBytes))
+	if results.options.numberOfBytes {
+		output += fmt.Sprintf("%v  ", results.numberOfBytes)
 	}
 
 	// -m
-	if fileInfo.numberOfCharacters {
-		output += fmt.Sprintf("%d  ", getNumberOfCharacters(fileInfo.fileBytes))
+	if results.options.numberOfCharacters {
+		output += fmt.Sprintf("%v  ", results.numberOfCharacters)
 	}
 
-	if fileInfo.fileName[i] != "" && fileInfo.fileName[i] != "-" {
-		output += fmt.Sprint(fileInfo.fileName[i])
+	if results.fileName != "" && results.fileName != "-" {
+		output += fmt.Sprint(results.fileName)
 	}
 
 	fmt.Println(output)
 }
 
-func parseArguments(arguments []string) (FileInfo, error) {
+func calculate(fileReader *bufio.Reader, results *fileResults) {
+
+	results.numberOfLines = 0
+	results.numberOfWords = 0
+	results.numberOfBytes = 0
+	results.numberOfCharacters = 0
+
+	var prevRune rune
+
+	for {
+		runeRead, runeSize, err := fileReader.ReadRune()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Fatal(err.Error())
+		}
+
+		if results.options.numberOfBytes {
+			results.numberOfBytes += uint64(runeSize)
+		}
+
+		if results.options.numberOfLines && runeRead == '\n' {
+			results.numberOfLines++
+		}
+
+		if results.options.numberOfCharacters {
+			results.numberOfCharacters++
+		}
+
+		if results.options.numberOfWords {
+			if unicode.IsSpace(runeRead) && unicode.IsSpace(prevRune) == false {
+				results.numberOfWords++
+			}
+		}
+		prevRune = runeRead
+	}
+}
+
+func parseArguments(arguments []string) (programOptions, error) {
 	numOfArguments := len(arguments)
 
-	if numOfArguments > MaxNumberOfArguments {
-		return FileInfo{}, fmt.Errorf(usageMessage(ProgramName))
+	if numOfArguments == 0 {
+		return programOptions{}, fmt.Errorf(usageMessage(ProgramName))
 	}
 
-	var fileInfo FileInfo
+	var fileInfo programOptions
 
 	for _, value := range arguments {
 		switch value {
 		case "--help":
-			return FileInfo{}, fmt.Errorf(usageMessage(ProgramName))
+			return programOptions{}, fmt.Errorf(usageMessage(ProgramName))
 		case "-c":
 			fileInfo.numberOfBytes = true
 		case "-l":
@@ -103,10 +181,10 @@ func parseArguments(arguments []string) (FileInfo, error) {
 		default:
 			// wrongs argument given
 			if value[0] == '-' {
-				return FileInfo{}, fmt.Errorf(wrongArgumentMessage(value, ProgramName))
+				return programOptions{}, fmt.Errorf(wrongArgumentMessage(value, ProgramName))
 			}
 
-			fileInfo.fileName = append(fileInfo.fileName, value)
+			fileInfo.fileNames = append(fileInfo.fileNames, value)
 		}
 	}
 
@@ -115,27 +193,6 @@ func parseArguments(arguments []string) (FileInfo, error) {
 	}
 
 	return fileInfo, nil
-}
-
-func readFile(fileName string) ([]byte, error) {
-
-	if fileName == "" || fileName == "-" {
-		return io.ReadAll(os.Stdin)
-	}
-
-	return os.ReadFile(fileName)
-}
-
-func getNumberOfCharacters(fileContent []byte) int {
-	return utf8.RuneCount(fileContent)
-}
-
-func getNumberOfLines(fileContent []byte) int {
-	return bytes.Count(fileContent, []byte("\n"))
-}
-
-func getNumberOfWords(fileContent []byte) int {
-	return len(bytes.Fields(fileContent))
 }
 
 func usageMessage(programName string) string {
