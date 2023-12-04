@@ -65,13 +65,13 @@ func handleFiles(options *programOptions, multipleFiles bool) {
 		storeTotalResults = &fileResults{fileName: &total}
 	}
 
-	for _, fileName := range options.fileNames {
+	for index, fileName := range options.fileNames {
 		var file *os.File
 		var err error
 
 		// recalculate only when file changes
 		// first time file is nil
-		if file == nil || *result.fileName != fileName {
+		if index == 0 || *result.fileName != fileName {
 			file, err = os.Open(fileName)
 			if err != nil {
 				log.Println(err.Error())
