@@ -227,7 +227,9 @@ If no [FILE] specified then input = stdin
   -l, --lines Number of lines
   -w, --words Number of words
   -c, --bytes Nymber of bytes
-  -m, --chars Number of characters`, programName)
+  -m, --chars Number of characters
+  -h, --help  Usage
+Original wc tool for linux is here: Full documentation <https://www.gnu.org/software/coreutils/wc>`, programName)
 }
 
 func wrongArgumentMessage(argument string, programName string) string {
