@@ -41,16 +41,15 @@ func main() {
 
 	var storeTotalResults fileResults
 	total := len(options.fileNames) > 1
+	readFromStdin := len(options.fileNames) == 0
+	var reader *bufio.Reader
+	res := fileResults{options: options}
 
 	if total {
 		storeTotalResults = fileResults{options: options, fileName: "total"}
 	}
 
-	res := fileResults{options: options}
-
-	var reader *bufio.Reader
-
-	if len(options.fileNames) == 0 {
+	if readFromStdin {
 		reader = bufio.NewReader(os.Stdin)
 		calculate(reader, &res)
 		printResults(&res)
