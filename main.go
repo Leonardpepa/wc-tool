@@ -50,6 +50,12 @@ func main() {
 
 	var reader *bufio.Reader
 
+	if len(options.fileNames) == 0 {
+		reader = bufio.NewReader(os.Stdin)
+		calculate(reader, &res)
+		printResults(&res)
+	}
+
 	for _, fileName := range options.fileNames {
 		file, err := os.Open(fileName)
 		if err != nil {
@@ -157,12 +163,6 @@ func calculate(fileReader *bufio.Reader, results *fileResults) {
 }
 
 func parseArguments(arguments []string) (programOptions, error) {
-	numOfArguments := len(arguments)
-
-	if numOfArguments == 0 {
-		return programOptions{}, fmt.Errorf(usageMessage(ProgramName))
-	}
-
 	var fileInfo programOptions
 
 	for _, value := range arguments {
