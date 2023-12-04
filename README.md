@@ -1,11 +1,11 @@
 # wc tool clone
 
 ## Purpose
-This project is a solution for [Build your own wc tool](!https://codingchallenges.fyi/challenges/challenge-wc)
+This project is a solution for [Build your own wc tool](https://codingchallenges.fyi/challenges/challenge-wc)
 build for my personal educational purposes
 
 ## Description
-wc is a command line tool, read the [original specification](!https://www.gnu.org/software/coreutils/manual/html_node/wc-invocation.html#wc-invocation) for more
+wc is a command line tool, read the [original specification](https://www.gnu.org/software/coreutils/manual/html_node/wc-invocation.html#wc-invocation) for more
 
 ## Features
 * Implemented
