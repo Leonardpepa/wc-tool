@@ -181,6 +181,9 @@ func calculate(fileReader *bufio.Reader, results *fileResults) {
 		}
 		prevRune = runeRead
 	}
+	if unicode.IsSpace(prevRune) == false {
+		results.numberOfWords++
+	}
 }
 
 // custom parsing function
