@@ -40,12 +40,11 @@ func main() {
 
 	numberOfFiles := len(options.fileNames)
 
-	if numberOfFiles > 0 {
-		handleFiles(&options, numberOfFiles > 1)
-		return
+	if numberOfFiles == 0 {
+		handleStdin(&options)
 	}
 
-	handleStdin(&options)
+	handleFiles(&options, numberOfFiles > 1)
 }
 
 func handleStdin(options *programOptions) {
