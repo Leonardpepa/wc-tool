@@ -19,7 +19,7 @@ type programOptions struct {
 }
 
 type fileResults struct {
-	fileName           string
+	fileName           *string
 	options            programOptions
 	numberOfBytes      uint64
 	numberOfLines      uint64
@@ -39,56 +39,77 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	var storeTotalResults fileResults
-	total := len(options.fileNames) > 1
-	readFromStdin := len(options.fileNames) == 0
-	var reader *bufio.Reader
-	res := fileResults{options: options}
+	numberOfFiles := len(options.fileNames)
 
-	if total {
-		storeTotalResults = fileResults{options: options, fileName: "total"}
+	if numberOfFiles > 0 {
+		handleFiles(options, numberOfFiles > 1)
+		return
 	}
 
-	if readFromStdin {
-		reader = bufio.NewReader(os.Stdin)
-		calculate(reader, &res)
-		printResults(&res)
+	handleStdin(options)
+}
+
+func handleStdin(options programOptions) {
+	reader := bufio.NewReader(os.Stdin)
+	res := fileResults{options: options}
+
+	calculate(reader, &res)
+	printResults(&res)
+}
+
+func handleFiles(options programOptions, multipleFiles bool) {
+	result := fileResults{options: options}
+	var storeTotalResults *fileResults
+	var reader *bufio.Reader
+
+	if multipleFiles {
+		total := "total"
+		storeTotalResults = &fileResults{options: options, fileName: &total}
 	}
 
 	for _, fileName := range options.fileNames {
-		file, err := os.Open(fileName)
-		if err != nil {
-			log.Println(err.Error())
-			continue
-		}
+		var file *os.File
+		var err error
 
 		// recalculate only when file changes
-		if res.fileName != fileName {
-			reader = bufio.NewReader(file)
-			res.fileName = fileName
-			calculate(reader, &res)
-		}
-
-		printResults(&res)
-
-		if total {
-			storeTotalResults.numberOfLines += res.numberOfLines
-			storeTotalResults.numberOfWords += res.numberOfWords
-			storeTotalResults.numberOfBytes += res.numberOfBytes
-			storeTotalResults.numberOfCharacters += res.numberOfCharacters
-		}
-
-		func(file *os.File) {
-			err := file.Close()
+		if result.fileName != &fileName {
+			file, err = os.Open(fileName)
 			if err != nil {
-				log.Fatal(err.Error())
+				log.Println(err.Error())
+				continue
 			}
-		}(file)
 
+			// create object once
+			if reader == nil {
+				reader = bufio.NewReader(file)
+			} else {
+				reader.Reset(file)
+			}
+			result.fileName = &fileName
+			calculate(reader, &result)
+		}
+
+		printResults(&result)
+
+		if multipleFiles {
+			storeTotalResults.numberOfLines += result.numberOfLines
+			storeTotalResults.numberOfWords += result.numberOfWords
+			storeTotalResults.numberOfBytes += result.numberOfBytes
+			storeTotalResults.numberOfCharacters += result.numberOfCharacters
+		}
+		// close the file if its open
+		if file != nil {
+			func(file *os.File) {
+				err := file.Close()
+				if err != nil {
+					log.Println(err.Error())
+				}
+			}(file)
+		}
 	}
 
-	if total {
-		printResults(&storeTotalResults)
+	if multipleFiles {
+		printResults(storeTotalResults)
 	}
 }
 
@@ -115,8 +136,8 @@ func printResults(results *fileResults) {
 		output += fmt.Sprintf("%v  ", results.numberOfCharacters)
 	}
 
-	if results.fileName != "" && results.fileName != "-" {
-		output += fmt.Sprint(results.fileName)
+	if *results.fileName != "" && *results.fileName != "-" {
+		output += fmt.Sprint(*results.fileName)
 	}
 
 	fmt.Println(output)
@@ -161,47 +182,50 @@ func calculate(fileReader *bufio.Reader, results *fileResults) {
 	}
 }
 
+// custom parsing function
+// you can do this better with the lib flag
 func parseArguments(arguments []string) (programOptions, error) {
-	var fileInfo programOptions
+	var options programOptions
 
 	for _, value := range arguments {
 		switch value {
 		case "-h", "--help":
 			return programOptions{}, fmt.Errorf(usageMessage(ProgramName))
 		case "-c", "--bytes":
-			fileInfo.numberOfBytes = true
+			options.numberOfBytes = true
 		case "-l", "--lines":
-			fileInfo.numberOfLines = true
+			options.numberOfLines = true
 		case "-w", "--words":
-			fileInfo.numberOfWords = true
+			options.numberOfWords = true
 		case "-m":
-			fileInfo.numberOfCharacters = true
+			options.numberOfCharacters = true
 		default:
 			// wrongs argument given
 			if value[0] == '-' {
 				return programOptions{}, fmt.Errorf(wrongArgumentMessage(value, ProgramName))
 			}
 
-			fileInfo.fileNames = append(fileInfo.fileNames, value)
+			options.fileNames = append(options.fileNames, value)
 		}
 	}
 
-	if !fileInfo.numberOfBytes && !fileInfo.numberOfLines && !fileInfo.numberOfWords && !fileInfo.numberOfCharacters {
-		fileInfo.numberOfBytes, fileInfo.numberOfLines, fileInfo.numberOfWords = true, true, true
+	if !options.numberOfBytes && !options.numberOfLines && !options.numberOfWords && !options.numberOfCharacters {
+		options.numberOfBytes, options.numberOfLines, options.numberOfWords = true, true, true
 	}
 
-	return fileInfo, nil
+	return options, nil
 }
 
 func usageMessage(programName string) string {
-	return fmt.Sprintf(`Usage: %s [OPTIONS]... [FILE]...
+	return fmt.Sprintf(`
+Usage: %s [OPTIONS]... [FILE]...
 If no [OPTIONS] specified then -l, -w, -c = true
 If no [FILE] specified then input = stdin
 [OPTIONS]:
-	-l, --lines Number of lines
-	-w, --words Number of words
-	-c, --bytes Nymber of bytes
-	-m, --chars Number of characters`, programName)
+  -l, --lines Number of lines
+  -w, --words Number of words
+  -c, --bytes Nymber of bytes
+  -m, --chars Number of characters`, programName)
 }
 
 func wrongArgumentMessage(argument string, programName string) string {
