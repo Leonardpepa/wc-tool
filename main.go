@@ -20,7 +20,6 @@ type programOptions struct {
 
 type fileResults struct {
 	fileName           *string
-	options            programOptions
 	numberOfBytes      uint64
 	numberOfLines      uint64
 	numberOfWords      uint64
@@ -42,29 +41,29 @@ func main() {
 	numberOfFiles := len(options.fileNames)
 
 	if numberOfFiles > 0 {
-		handleFiles(options, numberOfFiles > 1)
+		handleFiles(&options, numberOfFiles > 1)
 		return
 	}
 
-	handleStdin(options)
+	handleStdin(&options)
 }
 
-func handleStdin(options programOptions) {
+func handleStdin(options *programOptions) {
 	reader := bufio.NewReader(os.Stdin)
-	res := fileResults{options: options}
+	res := fileResults{}
 
-	calculate(reader, &res)
-	printResults(&res)
+	calculate(reader, &res, options)
+	printResults(&res, options)
 }
 
-func handleFiles(options programOptions, multipleFiles bool) {
-	result := fileResults{options: options}
+func handleFiles(options *programOptions, multipleFiles bool) {
+	result := fileResults{}
 	var storeTotalResults *fileResults
 	var reader *bufio.Reader
 
 	if multipleFiles {
 		total := "total"
-		storeTotalResults = &fileResults{options: options, fileName: &total}
+		storeTotalResults = &fileResults{fileName: &total}
 	}
 
 	for _, fileName := range options.fileNames {
@@ -87,10 +86,10 @@ func handleFiles(options programOptions, multipleFiles bool) {
 				reader.Reset(file)
 			}
 			result.fileName = &fileName
-			calculate(reader, &result)
+			calculate(reader, &result, options)
 		}
 
-		printResults(&result)
+		printResults(&result, options)
 
 		if multipleFiles {
 			storeTotalResults.numberOfLines += result.numberOfLines
@@ -110,30 +109,30 @@ func handleFiles(options programOptions, multipleFiles bool) {
 	}
 
 	if multipleFiles {
-		printResults(storeTotalResults)
+		printResults(storeTotalResults, options)
 	}
 }
 
-func printResults(results *fileResults) {
+func printResults(results *fileResults, options *programOptions) {
 	output := " "
 
 	// -l
-	if results.options.numberOfLines {
+	if options.numberOfLines {
 		output += fmt.Sprintf("%v  ", results.numberOfLines)
 	}
 
 	// -w
-	if results.options.numberOfWords {
+	if options.numberOfWords {
 		output += fmt.Sprintf("%v  ", results.numberOfWords)
 	}
 
 	// -c
-	if results.options.numberOfBytes {
+	if options.numberOfBytes {
 		output += fmt.Sprintf("%v  ", results.numberOfBytes)
 	}
 
 	// -m
-	if results.options.numberOfCharacters {
+	if options.numberOfCharacters {
 		output += fmt.Sprintf("%v  ", results.numberOfCharacters)
 	}
 
@@ -144,7 +143,7 @@ func printResults(results *fileResults) {
 	fmt.Println(output)
 }
 
-func calculate(fileReader *bufio.Reader, results *fileResults) {
+func calculate(fileReader *bufio.Reader, results *fileResults, options *programOptions) {
 
 	results.numberOfLines = 0
 	results.numberOfWords = 0
@@ -162,26 +161,26 @@ func calculate(fileReader *bufio.Reader, results *fileResults) {
 			log.Fatal(err.Error())
 		}
 
-		if results.options.numberOfBytes {
+		if options.numberOfBytes {
 			results.numberOfBytes += uint64(runeSize)
 		}
 
-		if results.options.numberOfLines && runeRead == '\n' {
+		if options.numberOfLines && runeRead == '\n' {
 			results.numberOfLines++
 		}
 
-		if results.options.numberOfCharacters {
+		if options.numberOfCharacters {
 			results.numberOfCharacters++
 		}
 
-		if results.options.numberOfWords {
+		if options.numberOfWords {
 			if unicode.IsSpace(runeRead) && unicode.IsSpace(prevRune) == false {
 				results.numberOfWords++
 			}
 		}
 		prevRune = runeRead
 	}
-	if unicode.IsSpace(prevRune) == false {
+	if prevRune != rune(0) && unicode.IsSpace(prevRune) == false {
 		results.numberOfWords++
 	}
 }
