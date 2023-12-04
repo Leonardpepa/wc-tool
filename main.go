@@ -72,7 +72,8 @@ func handleFiles(options programOptions, multipleFiles bool) {
 		var err error
 
 		// recalculate only when file changes
-		if result.fileName != &fileName {
+		// first time file is nil
+		if file == nil || *result.fileName != fileName {
 			file, err = os.Open(fileName)
 			if err != nil {
 				log.Println(err.Error())
@@ -136,7 +137,7 @@ func printResults(results *fileResults) {
 		output += fmt.Sprintf("%v  ", results.numberOfCharacters)
 	}
 
-	if *results.fileName != "" && *results.fileName != "-" {
+	if results.fileName != nil && *results.fileName != "-" {
 		output += fmt.Sprint(*results.fileName)
 	}
 
