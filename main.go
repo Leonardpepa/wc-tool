@@ -44,7 +44,9 @@ func main() {
 		handleStdin(&options)
 	}
 
-	handleFiles(&options, numberOfFiles > 1)
+	multipleFiles := numberOfFiles > 1
+
+	handleFiles(&options, multipleFiles)
 }
 
 func handleStdin(options *programOptions) {
