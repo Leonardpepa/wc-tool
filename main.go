@@ -18,8 +18,8 @@ type programOptions struct {
 	numberOfCharacters bool
 }
 
-type fileResults struct {
-	fileName           *string
+type Result struct {
+	fileName           string
 	numberOfBytes      uint64
 	numberOfLines      uint64
 	numberOfWords      uint64
@@ -40,40 +40,65 @@ func main() {
 
 	numberOfFiles := len(options.fileNames)
 
-	if numberOfFiles == 0 {
-		handleStdin(&options)
+	switch numberOfFiles {
+	case 0:
+		processInputFromStdin(&options)
+	case 1:
+		result := processSingleFile(&options)
+		fmt.Println(formatOutput(&result, &options))
+	default:
+		total, results := processMultipleFiles(&options)
+		for _, value := range results {
+			fmt.Println(formatOutput(&value, &options))
+		}
+		fmt.Println(formatOutput(&total, &options))
+
 	}
-
-	multipleFiles := numberOfFiles > 1
-
-	handleFiles(&options, multipleFiles)
 }
 
-func handleStdin(options *programOptions) {
+func processInputFromStdin(options *programOptions) {
 	reader := bufio.NewReader(os.Stdin)
-	result := fileResults{}
+	result := Result{}
 
 	calculate(reader, &result, options)
 	fmt.Println(formatOutput(&result, options))
 }
 
-func handleFiles(options *programOptions, multipleFiles bool) {
-	result := fileResults{}
-	var storeTotalResults *fileResults
-	var reader *bufio.Reader
+func processSingleFile(options *programOptions) Result {
+	result := Result{}
+	result.fileName = options.fileNames[0]
 
-	if multipleFiles {
-		total := "total"
-		storeTotalResults = &fileResults{fileName: &total}
+	file, err := os.Open(options.fileNames[0])
+	if err != nil {
+		log.Fatal(err.Error())
 	}
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
+
+	reader := bufio.NewReader(file)
+
+	calculate(reader, &result, options)
+	return result
+}
+
+func processMultipleFiles(options *programOptions) (Result, map[int]Result) {
+	result := Result{}
+	totals := Result{fileName: "total"}
+	results := make(map[int]Result)
+
+	var reader *bufio.Reader
 
 	for index, fileName := range options.fileNames {
 		var file *os.File
 		var err error
 
 		// recalculate only when file changes
-		// first time file is nil
-		if index == 0 || *result.fileName != fileName {
+		if result.fileName != fileName {
 			file, err = os.Open(fileName)
 			if err != nil {
 				log.Println(err.Error())
@@ -86,18 +111,17 @@ func handleFiles(options *programOptions, multipleFiles bool) {
 			} else {
 				reader.Reset(file)
 			}
-			result.fileName = &options.fileNames[index]
+			result.fileName = fileName
 			calculate(reader, &result, options)
 		}
 
-		fmt.Println(formatOutput(&result, options))
+		results[index] = result
 
-		if multipleFiles {
-			storeTotalResults.numberOfLines += result.numberOfLines
-			storeTotalResults.numberOfWords += result.numberOfWords
-			storeTotalResults.numberOfBytes += result.numberOfBytes
-			storeTotalResults.numberOfCharacters += result.numberOfCharacters
-		}
+		totals.numberOfLines += result.numberOfLines
+		totals.numberOfWords += result.numberOfWords
+		totals.numberOfBytes += result.numberOfBytes
+		totals.numberOfCharacters += result.numberOfCharacters
+
 		// close the file if its open
 		if file != nil {
 			func(file *os.File) {
@@ -107,14 +131,13 @@ func handleFiles(options *programOptions, multipleFiles bool) {
 				}
 			}(file)
 		}
+
 	}
 
-	if multipleFiles {
-		fmt.Println(formatOutput(storeTotalResults, options))
-	}
+	return totals, results
 }
 
-func calculate(fileReader *bufio.Reader, results *fileResults, options *programOptions) {
+func calculate(fileReader *bufio.Reader, results *Result, options *programOptions) {
 
 	results.numberOfLines = 0
 	results.numberOfWords = 0
@@ -190,7 +213,7 @@ func parseArguments(arguments []string) (programOptions, error) {
 	return options, nil
 }
 
-func formatOutput(results *fileResults, options *programOptions) string {
+func formatOutput(results *Result, options *programOptions) string {
 	output := ""
 
 	// -l
@@ -213,8 +236,8 @@ func formatOutput(results *fileResults, options *programOptions) string {
 		output += fmt.Sprintf("%v\t", results.numberOfCharacters)
 	}
 
-	if results.fileName != nil && *results.fileName != "-" {
-		output += fmt.Sprint(*results.fileName)
+	if results.fileName != "" && results.fileName != "-" {
+		output += fmt.Sprint(results.fileName)
 	}
 	return output
 }
