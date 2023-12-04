@@ -166,13 +166,13 @@ func parseArguments(arguments []string) (programOptions, error) {
 
 	for _, value := range arguments {
 		switch value {
-		case "--help":
+		case "-h", "--help":
 			return programOptions{}, fmt.Errorf(usageMessage(ProgramName))
-		case "-c":
+		case "-c", "--bytes":
 			fileInfo.numberOfBytes = true
-		case "-l":
+		case "-l", "--lines":
 			fileInfo.numberOfLines = true
-		case "-w":
+		case "-w", "--words":
 			fileInfo.numberOfWords = true
 		case "-m":
 			fileInfo.numberOfCharacters = true
@@ -194,14 +194,14 @@ func parseArguments(arguments []string) (programOptions, error) {
 }
 
 func usageMessage(programName string) string {
-	return fmt.Sprintf("\nUsage: %s [OPTIONS]... [FILE]..."+
-		"\nIf no [OPTIONS] specified then -l, -w, -c = true"+
-		"\nIf no [FILE] specified then input = stdin"+
-		"\n[OPTIONS]:"+
-		"\n-l Number of lines"+
-		"\n-w Number of words"+
-		"\n-c Number of bytes"+
-		"\n-m Number Of characters", programName)
+	return fmt.Sprintf(`Usage: %s [OPTIONS]... [FILE]...
+If no [OPTIONS] specified then -l, -w, -c = true
+If no [FILE] specified then input = stdin
+[OPTIONS]:
+	-l, --lines Number of lines
+	-w, --words Number of words
+	-c, --bytes Nymber of bytes
+	-m, --chars Number of characters`, programName)
 }
 
 func wrongArgumentMessage(argument string, programName string) string {
