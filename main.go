@@ -49,10 +49,10 @@ func main() {
 
 func handleStdin(options *programOptions) {
 	reader := bufio.NewReader(os.Stdin)
-	res := fileResults{}
+	result := fileResults{}
 
-	calculate(reader, &res, options)
-	printResults(&res, options)
+	calculate(reader, &result, options)
+	fmt.Println(formatOutput(&result, options))
 }
 
 func handleFiles(options *programOptions, multipleFiles bool) {
@@ -84,11 +84,11 @@ func handleFiles(options *programOptions, multipleFiles bool) {
 			} else {
 				reader.Reset(file)
 			}
-			result.fileName = &fileName
+			result.fileName = &options.fileNames[index]
 			calculate(reader, &result, options)
 		}
 
-		printResults(&result, options)
+		fmt.Println(formatOutput(&result, options))
 
 		if multipleFiles {
 			storeTotalResults.numberOfLines += result.numberOfLines
@@ -108,38 +108,8 @@ func handleFiles(options *programOptions, multipleFiles bool) {
 	}
 
 	if multipleFiles {
-		printResults(storeTotalResults, options)
+		fmt.Println(formatOutput(storeTotalResults, options))
 	}
-}
-
-func printResults(results *fileResults, options *programOptions) {
-	output := " "
-
-	// -l
-	if options.numberOfLines {
-		output += fmt.Sprintf("%v  ", results.numberOfLines)
-	}
-
-	// -w
-	if options.numberOfWords {
-		output += fmt.Sprintf("%v  ", results.numberOfWords)
-	}
-
-	// -c
-	if options.numberOfBytes {
-		output += fmt.Sprintf("%v  ", results.numberOfBytes)
-	}
-
-	// -m
-	if options.numberOfCharacters {
-		output += fmt.Sprintf("%v  ", results.numberOfCharacters)
-	}
-
-	if results.fileName != nil && *results.fileName != "-" {
-		output += fmt.Sprint(*results.fileName)
-	}
-
-	fmt.Println(output)
 }
 
 func calculate(fileReader *bufio.Reader, results *fileResults, options *programOptions) {
@@ -216,6 +186,35 @@ func parseArguments(arguments []string) (programOptions, error) {
 	}
 
 	return options, nil
+}
+
+func formatOutput(results *fileResults, options *programOptions) string {
+	output := ""
+
+	// -l
+	if options.numberOfLines {
+		output += fmt.Sprintf("%v\t", results.numberOfLines)
+	}
+
+	// -w
+	if options.numberOfWords {
+		output += fmt.Sprintf("%v\t", results.numberOfWords)
+	}
+
+	// -c
+	if options.numberOfBytes {
+		output += fmt.Sprintf("%v\t", results.numberOfBytes)
+	}
+
+	// -m
+	if options.numberOfCharacters {
+		output += fmt.Sprintf("%v\t", results.numberOfCharacters)
+	}
+
+	if results.fileName != nil && *results.fileName != "-" {
+		output += fmt.Sprint(*results.fileName)
+	}
+	return output
 }
 
 func usageMessage(programName string) string {

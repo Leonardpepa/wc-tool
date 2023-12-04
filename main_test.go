@@ -39,3 +39,30 @@ func TestCalculate(t *testing.T) {
 		})
 	}
 }
+
+func TestOutput(t *testing.T) {
+	cases := []struct {
+		Description string
+		options     programOptions
+		input       string
+		fileName    string
+		Want        string
+	}{
+		{"Empty", programOptions{numberOfCharacters: true, numberOfLines: true, numberOfWords: true, numberOfBytes: true}, "", "fileEmpty", "0\t0\t0\t0\tfileEmpty"},
+		{"Default", programOptions{numberOfCharacters: false, numberOfLines: true, numberOfWords: true, numberOfBytes: true}, "s", "singleCharFile", "0\t1\t1\tsingleCharFile"},
+		{"Single argument", programOptions{numberOfCharacters: true, numberOfLines: false, numberOfWords: false, numberOfBytes: false}, "s", "singleCharFile", "1\tsingleCharFile"},
+	}
+
+	for _, test := range cases {
+		t.Run(test.Description, func(t *testing.T) {
+			reader := bufio.NewReader(strings.NewReader(test.input))
+			result := fileResults{fileName: &test.fileName}
+			calculate(reader, &result, &test.options)
+			out := formatOutput(&result, &test.options)
+
+			if out != test.Want {
+				t.Errorf("got %v, want %v", out, test.Want)
+			}
+		})
+	}
+}
