@@ -42,16 +42,16 @@ func main() {
 
 	switch numberOfFiles {
 	case 0:
-		processInputFromStdin(&options)
+		processInputFromStdin(options)
 	case 1:
-		result := processSingleFile(&options)
-		fmt.Println(formatOutput(&result, &options))
+		result := processSingleFile(options)
+		fmt.Println(formatOutput(&result, options))
 	default:
-		total, results := processMultipleFiles(&options)
+		total, results := processMultipleFiles(options)
 		for _, value := range results {
-			fmt.Println(formatOutput(&value, &options))
+			fmt.Println(formatOutput(&value, options))
 		}
-		fmt.Println(formatOutput(&total, &options))
+		fmt.Println(formatOutput(&total, options))
 
 	}
 }
@@ -181,13 +181,13 @@ func calculate(fileReader *bufio.Reader, results *Result, options *programOption
 
 // custom parsing function
 // you can do this better with the lib flag
-func parseArguments(arguments []string) (programOptions, error) {
+func parseArguments(arguments []string) (*programOptions, error) {
 	var options programOptions
 
 	for _, value := range arguments {
 		switch value {
 		case "-h", "--help":
-			return programOptions{}, fmt.Errorf(usageMessage(ProgramName))
+			return nil, fmt.Errorf(usageMessage(ProgramName))
 		case "-c", "--bytes":
 			options.numberOfBytes = true
 		case "-l", "--lines":
@@ -199,7 +199,7 @@ func parseArguments(arguments []string) (programOptions, error) {
 		default:
 			// wrongs argument given
 			if value[0] == '-' {
-				return programOptions{}, fmt.Errorf(wrongArgumentMessage(value, ProgramName))
+				return nil, fmt.Errorf(wrongArgumentMessage(value, ProgramName))
 			}
 
 			options.fileNames = append(options.fileNames, value)
@@ -210,7 +210,7 @@ func parseArguments(arguments []string) (programOptions, error) {
 		options.numberOfBytes, options.numberOfLines, options.numberOfWords = true, true, true
 	}
 
-	return options, nil
+	return &options, nil
 }
 
 func formatOutput(results *Result, options *programOptions) string {
