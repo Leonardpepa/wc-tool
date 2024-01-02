@@ -187,7 +187,8 @@ func parseArguments(arguments []string) (*programOptions, error) {
 	for _, value := range arguments {
 		switch value {
 		case "-h", "--help":
-			return nil, fmt.Errorf(usageMessage(ProgramName))
+			fmt.Println(usageMessage(ProgramName))
+			os.Exit(0)
 		case "-c", "--bytes":
 			options.numberOfBytes = true
 		case "-l", "--lines":
